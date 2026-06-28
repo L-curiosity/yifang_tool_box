@@ -1017,10 +1017,16 @@ function init() {
 
 function updateVisitCounter() {
   const key = "yifang_toolbox_visit_count";
-  const current = Number(localStorage.getItem(key) || "0") + 1;
+  const sessionKey = "yifang_toolbox_visit_counted";
+  let current = Number(localStorage.getItem(key) || "0");
+  if (!sessionStorage.getItem(sessionKey)) {
+    current += 1;
+    localStorage.setItem(key, String(current));
+    sessionStorage.setItem(sessionKey, "1");
+  }
   localStorage.setItem(key, String(current));
   $("#visitCounter").textContent = `访问量 ${current.toLocaleString("zh-CN")}`;
-  $("#visitCounter").title = "当前浏览器本地访问次数";
+  $("#visitCounter").title = "当前浏览器本地会话访问次数，刷新不重复计数";
 }
 
 init();
