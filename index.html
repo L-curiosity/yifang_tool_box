@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yifang Toolbox</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#json" aria-label="Yifang Toolbox">
+          <span class="brand-mark">木</span>
+          <span>
+            <strong>Yifang Toolbox</strong>
+            <small>Java Backend Tools</small>
+          </span>
+        </a>
+        <div class="today-pill" id="todayText">--</div>
+      </header>
+
+      <main class="main-content">
+        <section class="hero-band" aria-label="站点概览">
+          <canvas id="treeCanvas" width="640" height="260" aria-hidden="true"></canvas>
+          <div class="hero-copy">
+            <p>toolbox</p>
+            <h1>把常用小工具放在手边。</h1>
+          </div>
+        </section>
+
+        <section class="tools-section" aria-label="工具库">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Tools</p>
+              <h2>工具库</h2>
+            </div>
+          </div>
+
+          <nav class="tool-tabs" aria-label="工具切换">
+            <button class="tool-tab active" type="button" data-tool="json">JSON</button>
+            <button class="tool-tab" type="button" data-tool="sql">SQL</button>
+            <button class="tool-tab" type="button" data-tool="timestamp">时间戳</button>
+            <button class="tool-tab" type="button" data-tool="url-base64">URL/Base64</button>
+            <button class="tool-tab" type="button" data-tool="sql-java">SQL 转实体</button>
+            <button class="tool-tab" type="button" data-tool="json-java">JSON 转 DTO</button>
+            <button class="tool-tab" type="button" data-tool="cron">Cron</button>
+            <button class="tool-tab" type="button" data-tool="jwt">JWT</button>
+            <button class="tool-tab" type="button" data-tool="ip">IP 地址</button>
+            <button class="tool-tab" type="button" data-tool="enum">枚举</button>
+          </nav>
+
+          <div class="tool-panels">
+            <article class="tool-card active" id="tool-json" data-tool-panel="json">
+              <header><span class="tool-index">01</span><h3>JSON 格式化</h3></header>
+              <textarea id="jsonInput" class="tool-textarea" spellcheck="false" placeholder='{"name":"site","ok":true}'></textarea>
+              <div class="tool-actions">
+                <button class="primary-button" id="formatJsonBtn" type="button">格式化</button>
+                <button class="ghost-button" id="minifyJsonBtn" type="button">压缩</button>
+                <button class="ghost-button" data-copy-from="jsonOutput" type="button">复制</button>
+              </div>
+              <pre class="tool-output" id="jsonOutput"></pre>
+              <p class="tool-message" id="jsonMessage"></p>
+            </article>
+
+            <article class="tool-card" id="tool-sql" data-tool-panel="sql">
+              <header><span class="tool-index">02</span><h3>SQL 格式化</h3></header>
+              <textarea id="sqlInput" class="tool-textarea" spellcheck="false" placeholder="select id,user_name from user where status=1 order by create_time desc"></textarea>
+              <div class="tool-actions">
+                <button class="primary-button" id="formatSqlBtn" type="button">格式化</button>
+                <button class="ghost-button" id="compactSqlBtn" type="button">压缩</button>
+                <button class="ghost-button" data-copy-from="sqlOutput" type="button">复制</button>
+              </div>
+              <pre class="tool-output" id="sqlOutput"></pre>
+              <p class="tool-message" id="sqlMessage"></p>
+            </article>
+
+            <article class="tool-card" id="tool-timestamp" data-tool-panel="timestamp">
+              <header><span class="tool-index">03</span><h3>时间戳转换</h3></header>
+              <div class="inline-grid">
+                <input id="timestampInput" type="text" placeholder="秒/毫秒时间戳，或 2026-06-28 15:30:00" />
+                <button class="primary-button" id="convertTimeBtn" type="button">转换</button>
+                <button class="ghost-button" id="useNowBtn" type="button">当前时间</button>
+              </div>
+              <div class="result-list" id="timestampResults"></div>
+            </article>
+
+            <article class="tool-card" id="tool-url-base64" data-tool-panel="url-base64">
+              <header><span class="tool-index">04</span><h3>URL / Base64 转换</h3></header>
+              <textarea id="codecInput" class="tool-textarea" spellcheck="false" placeholder="输入要转换的内容"></textarea>
+              <div class="tool-actions">
+                <button class="primary-button" id="urlEncodeBtn" type="button">URL Encode</button>
+                <button class="ghost-button" id="urlDecodeBtn" type="button">URL Decode</button>
+                <button class="ghost-button" id="base64EncodeBtn" type="button">Base64 Encode</button>
+                <button class="ghost-button" id="base64DecodeBtn" type="button">Base64 Decode</button>
+                <button class="ghost-button" data-copy-from="codecOutput" type="button">复制</button>
+              </div>
+              <pre class="tool-output" id="codecOutput"></pre>
+              <p class="tool-message" id="codecMessage"></p>
+            </article>
+
+            <article class="tool-card" id="tool-sql-java" data-tool-panel="sql-java">
+              <header><span class="tool-index">05</span><h3>SQL 转 Java 实体</h3></header>
+              <div class="inline-grid">
+                <input id="sqlJavaClassName" type="text" placeholder="类名，例如 UserDO；留空按表名生成" />
+                <select id="sqlJavaType" aria-label="实体类型">
+                  <option value="DO">DO</option>
+                  <option value="DTO">DTO</option>
+                  <option value="VO">VO</option>
+                </select>
+                <label class="check-row"><input id="sqlJavaLombok" type="checkbox" checked /> Lombok</label>
+              </div>
+              <textarea id="sqlJavaInput" class="tool-textarea" spellcheck="false" placeholder="CREATE TABLE `user` (`id` bigint NOT NULL COMMENT '主键', `user_name` varchar(64) COMMENT '用户名', `create_time` datetime COMMENT '创建时间');"></textarea>
+              <div class="tool-actions">
+                <button class="primary-button" id="sqlJavaBtn" type="button">生成 Java 类</button>
+                <button class="ghost-button" data-copy-from="sqlJavaOutput" type="button">复制</button>
+              </div>
+              <pre class="tool-output code-output" id="sqlJavaOutput"></pre>
+              <p class="tool-message" id="sqlJavaMessage"></p>
+            </article>
+
+            <article class="tool-card" id="tool-json-java" data-tool-panel="json-java">
+              <header><span class="tool-index">06</span><h3>JSON 转 Java DTO</h3></header>
+              <div class="inline-grid">
+                <input id="jsonJavaClassName" type="text" value="DemoDTO" placeholder="类名，例如 UserDTO" />
+                <label class="check-row"><input id="jsonJavaLombok" type="checkbox" checked /> Lombok</label>
+              </div>
+              <textarea id="jsonJavaInput" class="tool-textarea" spellcheck="false" placeholder='{"id":1,"userName":"Tom","enabled":true,"profile":{"age":18}}'></textarea>
+              <div class="tool-actions">
+                <button class="primary-button" id="jsonJavaBtn" type="button">生成 DTO</button>
+                <button class="ghost-button" data-copy-from="jsonJavaOutput" type="button">复制</button>
+              </div>
+              <pre class="tool-output code-output" id="jsonJavaOutput"></pre>
+              <p class="tool-message" id="jsonJavaMessage"></p>
+            </article>
+
+            <article class="tool-card" id="tool-cron" data-tool-panel="cron">
+              <header><span class="tool-index">07</span><h3>Cron 表达式</h3></header>
+              <div class="inline-grid">
+                <input id="cronInput" type="text" value="*/5 * * * *" placeholder="5位 cron，例如 */5 * * * *" />
+                <button class="primary-button" id="cronBtn" type="button">计算</button>
+              </div>
+              <div class="result-list" id="cronResults"></div>
+              <p class="tool-message" id="cronMessage"></p>
+            </article>
+
+            <article class="tool-card" id="tool-jwt" data-tool-panel="jwt">
+              <header><span class="tool-index">08</span><h3>JWT 解析</h3></header>
+              <textarea id="jwtInput" class="tool-textarea" spellcheck="false" placeholder="粘贴 JWT token"></textarea>
+              <div class="tool-actions">
+                <button class="primary-button" id="jwtBtn" type="button">解析</button>
+                <button class="ghost-button" data-copy-from="jwtOutput" type="button">复制 payload</button>
+              </div>
+              <pre class="tool-output" id="jwtOutput"></pre>
+              <div class="result-list" id="jwtMeta"></div>
+              <p class="tool-message" id="jwtMessage"></p>
+            </article>
+
+            <article class="tool-card" id="tool-ip" data-tool-panel="ip">
+              <header><span class="tool-index">09</span><h3>IP 地址查询</h3></header>
+              <div class="inline-grid">
+                <input id="ipInput" type="text" placeholder="输入 IPv4 / IPv6；留空查询当前公网 IPv4" />
+                <button class="primary-button" id="ipLookupBtn" type="button">查询</button>
+                <button class="ghost-button" id="currentIpBtn" type="button">当前公网 IPv4</button>
+                <button class="ghost-button" id="browserLocationBtn" type="button">真实位置</button>
+              </div>
+              <div class="result-list" id="realLocationResults"></div>
+              <div class="result-list" id="ipResults"></div>
+              <pre class="tool-output" id="ipOutput"></pre>
+              <p class="tool-message" id="ipMessage"></p>
+            </article>
+
+            <article class="tool-card" id="tool-enum" data-tool-panel="enum">
+              <header><span class="tool-index">10</span><h3>枚举生成器</h3></header>
+              <div class="inline-grid">
+                <input id="enumClassName" type="text" value="AuthStatusEnum" placeholder="枚举类名" />
+                <label class="check-row"><input id="enumLombok" type="checkbox" /> Lombok Getter</label>
+              </div>
+              <textarea id="enumInput" class="tool-textarea" spellcheck="false" placeholder="0 未认证 NOT_AUTH&#10;1 已认证 AUTHED&#10;2 认证失败 AUTH_FAILED"></textarea>
+              <div class="tool-actions">
+                <button class="primary-button" id="enumBtn" type="button">生成枚举</button>
+                <button class="ghost-button" data-copy-from="enumOutput" type="button">复制</button>
+              </div>
+              <pre class="tool-output code-output" id="enumOutput"></pre>
+              <p class="tool-message" id="enumMessage"></p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
