@@ -14,7 +14,8 @@ const TOOLS = [
   { id: "json", title: "JSON", fullTitle: "JSON 格式化", category: "format", aliases: ["json", "format", "格式化", "json格式化"] },
   { id: "sql", title: "SQL", fullTitle: "SQL 格式化", category: "format", aliases: ["sql", "format", "格式化", "sql格式化"] },
   { id: "timestamp", title: "时间戳", fullTitle: "时间戳转换", category: "time", aliases: ["time", "timestamp", "日期", "时间"] },
-  { id: "url-base64", title: "URL/Base64", fullTitle: "URL / Base64 转换", category: "convert", aliases: ["url", "base64", "encode", "decode", "编码", "解码"] },
+  { id: "url", title: "URL", fullTitle: "URL 编解码", category: "convert", aliases: ["url", "encode", "decode", "编码", "解码", "urlencode", "urldecode"] },
+  { id: "base64", title: "Base64", fullTitle: "Base64 编解码", category: "convert", aliases: ["base64", "encode", "decode", "编码", "解码"] },
   { id: "sql-java", title: "SQL 转实体", fullTitle: "SQL 转 Java 实体", category: "convert", aliases: ["sql", "java", "entity", "实体", "do", "dto", "vo"] },
   { id: "json-java", title: "JSON 转 DTO", fullTitle: "JSON 转 Java DTO", category: "convert", aliases: ["json", "java", "dto", "class", "实体"] },
   { id: "cron", title: "Cron", fullTitle: "Cron 表达式", category: "time", aliases: ["cron", "定时", "表达式"] },
@@ -379,18 +380,29 @@ function formatDateTime(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-function runCodec(mode) {
-  const input = $("#codecInput").value;
-  const output = $("#codecOutput");
+function runUrlCodec(mode) {
+  const input = $("#urlInput").value;
+  const output = $("#urlOutput");
   try {
-    if (mode === "urlEncode") setCode(output, encodeURIComponent(input));
-    if (mode === "urlDecode") setCode(output, decodeURIComponent(input));
-    if (mode === "base64Encode") setCode(output, btoa(unescape(encodeURIComponent(input))));
-    if (mode === "base64Decode") setCode(output, decodeURIComponent(escape(atob(input))));
-    setMessage("#codecMessage");
+    if (mode === "encode") setCode(output, encodeURIComponent(input));
+    if (mode === "decode") setCode(output, decodeURIComponent(input));
+    setMessage("#urlMessage");
   } catch (error) {
     setCode(output, "");
-    setMessage("#codecMessage", error.message);
+    setMessage("#urlMessage", error.message);
+  }
+}
+
+function runBase64Codec(mode) {
+  const input = $("#base64Input").value;
+  const output = $("#base64Output");
+  try {
+    if (mode === "encode") setCode(output, btoa(unescape(encodeURIComponent(input))));
+    if (mode === "decode") setCode(output, decodeURIComponent(escape(atob(input))));
+    setMessage("#base64Message");
+  } catch (error) {
+    setCode(output, "");
+    setMessage("#base64Message", error.message);
   }
 }
 
@@ -744,11 +756,7 @@ async function lookupIp(current = false) {
       ip = await fetchCurrentIpv4();
       $("#ipInput").value = ip;
     }
-    const url = `https://ipwho.is/${encodeURIComponent(ip)}?lang=zh-CN`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`请求失败：${response.status}`);
-    const data = await response.json();
-    if (!data.success) throw new Error(data.message || "查询失败");
+    const { data, fallbackUsed } = await queryIpInfo(ip);
     $("#ipInput").value = data.ip || ip;
     renderResults($("#ipResults"), [
       ["IP", data.ip || ""],
@@ -760,7 +768,7 @@ async function lookupIp(current = false) {
       ["IP库经纬度", data.latitude && data.longitude ? `${data.latitude}, ${data.longitude}` : ""],
     ]);
     setCode($("#ipOutput"), JSON.stringify(data, null, 2), "json");
-    setMessage("#ipMessage");
+    setMessage("#ipMessage", fallbackUsed ? "主 IP 库限流，已使用备用 IP 库。" : "");
   } catch (error) {
     $("#ipResults").innerHTML = "";
     setCode($("#ipOutput"), "");
@@ -769,6 +777,117 @@ async function lookupIp(current = false) {
     $("#ipLookupBtn").disabled = false;
     $("#currentIpBtn").disabled = false;
   }
+}
+
+async function queryIpInfo(ip) {
+  const primaryUrl = `https://ipwho.is/${encodeURIComponent(ip)}?lang=zh-CN`;
+  try {
+    const response = await fetch(primaryUrl);
+    if (response.status === 429) throw new Error("PRIMARY_RATE_LIMIT");
+    if (!response.ok) throw new Error(`主 IP 库请求失败：${response.status}`);
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || "主 IP 库查询失败");
+    return { data: normalizeIpWhoData(data), fallbackUsed: false };
+  } catch (error) {
+    const fallbackData = await queryIpApiFallback(ip, error);
+    return { data: fallbackData, fallbackUsed: true };
+  }
+}
+
+function normalizeIpWhoData(data) {
+  return {
+    ...data,
+    type: data.type || "",
+    timezone: data.timezone || {},
+    connection: data.connection || {},
+  };
+}
+
+async function queryIpApiFallback(ip, cause) {
+  const url = `https://ipapi.co/${encodeURIComponent(ip)}/json/`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    if (cause?.message === "PRIMARY_RATE_LIMIT") {
+      throw new Error("IP 查询服务被限流，请稍后再试。");
+    }
+    throw new Error(`备用 IP 库请求失败：${response.status}`);
+  }
+  const data = await response.json();
+  if (data.error) throw new Error(data.reason || "备用 IP 库查询失败");
+  return {
+    ip: data.ip || ip,
+    type: data.version ? `IPv${data.version}` : "",
+    country: translateIpPlace(data.country_name),
+    region: translateIpPlace(data.region),
+    city: translateIpPlace(data.city),
+    latitude: data.latitude,
+    longitude: data.longitude,
+    connection: {
+      asn: parseAsnNumber(data.asn),
+      isp: data.org || "",
+      org: data.org || "",
+    },
+    timezone: {
+      id: data.timezone || "",
+    },
+    source: "ipapi.co",
+  };
+}
+
+function translateIpPlace(value) {
+  const map = {
+    China: "中国",
+    "Hong Kong": "香港",
+    Macau: "澳门",
+    Taiwan: "台湾",
+    Beijing: "北京",
+    Shanghai: "上海",
+    Tianjin: "天津",
+    Chongqing: "重庆",
+    Guangdong: "广东",
+    Jiangsu: "江苏",
+    Zhejiang: "浙江",
+    Shandong: "山东",
+    Henan: "河南",
+    Sichuan: "四川",
+    Hubei: "湖北",
+    Hunan: "湖南",
+    Fujian: "福建",
+    Anhui: "安徽",
+    Hebei: "河北",
+    Jiangxi: "江西",
+    Liaoning: "辽宁",
+    Shaanxi: "陕西",
+    Yunnan: "云南",
+    Guangxi: "广西",
+    Shanxi: "山西",
+    Guizhou: "贵州",
+    Jilin: "吉林",
+    Heilongjiang: "黑龙江",
+    Xinjiang: "新疆",
+    Gansu: "甘肃",
+    Hainan: "海南",
+    Ningxia: "宁夏",
+    Qinghai: "青海",
+    Tibet: "西藏",
+    "Inner Mongolia": "内蒙古",
+    Nanjing: "南京",
+    Hangzhou: "杭州",
+    Suzhou: "苏州",
+    Wuxi: "无锡",
+    Guangzhou: "广州",
+    Shenzhen: "深圳",
+    Chengdu: "成都",
+    Wuhan: "武汉",
+    Xian: "西安",
+    "Xi'an": "西安",
+  };
+  return map[String(value || "").trim()] || value || "";
+}
+
+function parseAsnNumber(value) {
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : "";
 }
 
 function formatIpLocation(data) {
@@ -782,11 +901,19 @@ function formatIpLocation(data) {
 }
 
 async function fetchCurrentIpv4() {
-  const response = await fetch("https://ipv4.icanhazip.com");
-  if (!response.ok) throw new Error(`获取 IPv4 失败：${response.status}`);
-  const ip = (await response.text()).trim();
-  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) throw new Error("未获取到有效 IPv4");
-  return ip;
+  const urls = ["https://ipv4.icanhazip.com", "https://api.ipify.org"];
+  let lastError = null;
+  for (const url of urls) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${response.status}`);
+      const ip = (await response.text()).trim();
+      if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) return ip;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("未获取到有效 IPv4");
 }
 
 function toEnumConstant(value) {
@@ -855,10 +982,10 @@ function bindEvents() {
     $("#timestampInput").value = Date.now();
     convertTime();
   });
-  $("#urlEncodeBtn").addEventListener("click", () => runCodec("urlEncode"));
-  $("#urlDecodeBtn").addEventListener("click", () => runCodec("urlDecode"));
-  $("#base64EncodeBtn").addEventListener("click", () => runCodec("base64Encode"));
-  $("#base64DecodeBtn").addEventListener("click", () => runCodec("base64Decode"));
+  $("#urlEncodeBtn").addEventListener("click", () => runUrlCodec("encode"));
+  $("#urlDecodeBtn").addEventListener("click", () => runUrlCodec("decode"));
+  $("#base64EncodeBtn").addEventListener("click", () => runBase64Codec("encode"));
+  $("#base64DecodeBtn").addEventListener("click", () => runBase64Codec("decode"));
   $("#sqlJavaBtn").addEventListener("click", generateSqlJava);
   $("#jsonJavaBtn").addEventListener("click", generateJsonJava);
   $("#cronBtn").addEventListener("click", calcCron);
@@ -876,12 +1003,7 @@ function bindEvents() {
 }
 
 function init() {
-  $("#todayText").textContent = new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "long",
-  }).format(new Date());
+  updateVisitCounter();
 
   bindEvents();
   renderToolTabs("format");
@@ -891,6 +1013,14 @@ function init() {
   if (!openToolFromHash()) {
     showHome();
   }
+}
+
+function updateVisitCounter() {
+  const key = "yifang_toolbox_visit_count";
+  const current = Number(localStorage.getItem(key) || "0") + 1;
+  localStorage.setItem(key, String(current));
+  $("#visitCounter").textContent = `访问量 ${current.toLocaleString("zh-CN")}`;
+  $("#visitCounter").title = "当前浏览器本地访问次数";
 }
 
 init();

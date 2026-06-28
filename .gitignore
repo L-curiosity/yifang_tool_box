@@ -2,3 +2,5 @@ node_modules/
 screenshots/
 .DS_Store
 npm-debug.log*
+package.json
+package-lock.json
