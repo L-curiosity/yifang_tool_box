@@ -924,6 +924,18 @@ select:focus {
   justify-self: end;
 }
 
+.site-companion.is-pet-companion {
+  gap: 4px;
+}
+
+.site-companion.is-pet-companion .companion-stage {
+  height: 132px;
+}
+
+.site-companion.is-pet-companion .live2d-canvas {
+  transform: translateY(0);
+}
+
 .companion-stage:focus-visible,
 .companion-toggle:focus-visible {
   outline: 3px solid rgba(66, 95, 119, 0.28);

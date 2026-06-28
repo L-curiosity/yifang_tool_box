@@ -97,6 +97,7 @@ const LIVE2D_ROLES = {
     title: "宠物",
     path: "./assets/live2d/penchan/penchan.model.json",
     scale: 0.22,
+    layout: "pet",
     motionGroup: "",
     tapMotions: [],
   },
@@ -1385,6 +1386,7 @@ async function initLive2dCompanion(options = {}) {
 
   companion.live2dRole = roleKey;
   companion.classList.toggle("is-fallback-companion", Boolean(role.fallback));
+  companion.classList.toggle("is-pet-companion", role.layout === "pet");
   companion.classList.toggle("is-live2d-loading", !role.fallback);
   companion.classList.remove("is-live2d-ready");
 
@@ -1398,6 +1400,7 @@ async function initLive2dCompanion(options = {}) {
   if (!window.PIXI?.Application || !window.PIXI?.live2d?.Live2DModel) {
     companion.classList.remove("is-live2d-loading");
     companion.classList.add("is-fallback-companion");
+    companion.classList.remove("is-pet-companion");
     return;
   }
 
@@ -1428,6 +1431,7 @@ async function initLive2dCompanion(options = {}) {
   } catch (error) {
     companion.classList.remove("is-live2d-loading");
     companion.classList.add("is-fallback-companion");
+    companion.classList.remove("is-pet-companion");
     console.warn("Live2D companion failed to load", error);
   }
 }
