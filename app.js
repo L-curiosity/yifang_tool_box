@@ -1,6 +1,35 @@
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
+const CATEGORIES = {
+  all: "全部工具",
+  format: "格式化",
+  convert: "转换",
+  time: "时间戳",
+  parse: "IP / JWT",
+  generate: "生成",
+};
+
+const TOOLS = [
+  { id: "json", title: "JSON", fullTitle: "JSON 格式化", category: "format", aliases: ["json", "format", "格式化", "json格式化"] },
+  { id: "sql", title: "SQL", fullTitle: "SQL 格式化", category: "format", aliases: ["sql", "format", "格式化", "sql格式化"] },
+  { id: "timestamp", title: "时间戳", fullTitle: "时间戳转换", category: "time", aliases: ["time", "timestamp", "日期", "时间"] },
+  { id: "url-base64", title: "URL/Base64", fullTitle: "URL / Base64 转换", category: "convert", aliases: ["url", "base64", "encode", "decode", "编码", "解码"] },
+  { id: "sql-java", title: "SQL 转实体", fullTitle: "SQL 转 Java 实体", category: "convert", aliases: ["sql", "java", "entity", "实体", "do", "dto", "vo"] },
+  { id: "json-java", title: "JSON 转 DTO", fullTitle: "JSON 转 Java DTO", category: "convert", aliases: ["json", "java", "dto", "class", "实体"] },
+  { id: "cron", title: "Cron", fullTitle: "Cron 表达式", category: "time", aliases: ["cron", "定时", "表达式"] },
+  { id: "jwt", title: "JWT", fullTitle: "JWT 解析", category: "parse", aliases: ["jwt", "token", "解析", "登录"] },
+  { id: "ip", title: "IP 地址", fullTitle: "IP 地址查询", category: "parse", aliases: ["ip", "地址", "公网", "归属地"] },
+  { id: "enum", title: "枚举", fullTitle: "枚举生成器", category: "generate", aliases: ["enum", "枚举", "生成"] },
+];
+
+const state = {
+  activeCategory: null,
+  searchIndex: 0,
+  searchMatches: [],
+  inToolsView: false,
+};
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -36,6 +65,13 @@ function renderResults(target, rows) {
 function setCode(target, value, lang = "text") {
   const text = String(value ?? "");
   target.dataset.raw = text;
+  target.dataset.lang = lang;
+  renderCode(target);
+}
+
+function renderCode(target) {
+  const text = target.dataset.raw || "";
+  const lang = target.dataset.lang || "text";
   target.innerHTML =
     lang === "json"
       ? highlightJson(text)
@@ -44,6 +80,8 @@ function setCode(target, value, lang = "text") {
         : lang === "java"
           ? highlightJava(text)
           : highlightPlain(text);
+  const query = $(`.output-search[data-search-output="${target.id}"]`)?.value.trim() || "";
+  if (query) markSearchHits(target, query);
 }
 
 function getCode(target) {
@@ -89,7 +127,53 @@ function highlightPlain(text) {
   return escapeHtml(text).replace(/\b(-?\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>');
 }
 
-function activateTool(tool) {
+function markSearchHits(root, query) {
+  const pattern = new RegExp(escapeRegExp(query), "gi");
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+  textNodes.forEach((node) => {
+    if (!pattern.test(node.nodeValue)) return;
+    pattern.lastIndex = 0;
+    const fragment = document.createDocumentFragment();
+    let lastIndex = 0;
+    node.nodeValue.replace(pattern, (match, offset) => {
+      fragment.append(document.createTextNode(node.nodeValue.slice(lastIndex, offset)));
+      const mark = document.createElement("span");
+      mark.className = "search-hit";
+      mark.textContent = match;
+      fragment.append(mark);
+      lastIndex = offset + match.length;
+      return match;
+    });
+    fragment.append(document.createTextNode(node.nodeValue.slice(lastIndex)));
+    node.parentNode.replaceChild(fragment, node);
+  });
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function showHome() {
+  state.inToolsView = false;
+  $("#home").classList.remove("hidden");
+  $(".tools-section").classList.add("hidden");
+  $$(".category-link").forEach((button) => button.classList.remove("active"));
+  $("#toolSearchInput").value = "";
+  $("#toolSearchResults").classList.remove("active");
+  history.replaceState(null, "", location.pathname);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showTools() {
+  state.inToolsView = true;
+  $("#home").classList.add("hidden");
+  $(".tools-section").classList.remove("hidden");
+}
+
+function activateTool(tool, options = {}) {
+  showTools();
   $$(".tool-tab").forEach((tab) => {
     const active = tab.dataset.tool === tool;
     tab.classList.toggle("active", active);
@@ -101,6 +185,87 @@ function activateTool(tool) {
   });
 
   history.replaceState(null, "", `#${tool}`);
+  if (options.scroll !== false) {
+    document.querySelector("#tool-" + tool)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function renderToolTabs(category = state.activeCategory) {
+  const visibleTools = getToolsByCategory(category);
+  $(".tool-tabs").innerHTML = visibleTools
+    .map((tool) => `<button class="tool-tab" type="button" data-tool="${tool.id}">${escapeHtml(tool.title)}</button>`)
+    .join("");
+  $$(".tool-tab").forEach((tab) => tab.addEventListener("click", () => activateTool(tab.dataset.tool)));
+  return visibleTools;
+}
+
+function getToolsByCategory(category) {
+  return category === "all" ? TOOLS : TOOLS.filter((tool) => tool.category === category);
+}
+
+function activateCategory(category) {
+  showTools();
+  state.activeCategory = category;
+  $$(".category-link").forEach((button) => {
+    button.classList.toggle("active", button.dataset.category === category);
+  });
+  $("#categoryTitle").textContent = CATEGORIES[category] || "全部工具";
+  const visibleTools = renderToolTabs(category);
+  if (visibleTools.length > 0) activateTool(visibleTools[0].id, { scroll: false });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function searchTools(query) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return [];
+  return TOOLS.filter((tool) => {
+    const haystack = [tool.title, tool.fullTitle, CATEGORIES[tool.category], ...tool.aliases].join(" ").toLowerCase();
+    return haystack.includes(normalized);
+  });
+}
+
+function renderSearchResults(query) {
+  const results = searchTools(query);
+  state.searchMatches = results;
+  state.searchIndex = Math.min(state.searchIndex, Math.max(results.length - 1, 0));
+  const container = $("#toolSearchResults");
+  container.classList.toggle("active", results.length > 0);
+  container.innerHTML = results
+    .map(
+      (tool, index) => `
+        <button class="search-result-item ${index === state.searchIndex ? "active" : ""}" type="button" data-tool="${tool.id}" data-index="${index}">
+          <strong>${escapeHtml(tool.fullTitle)}</strong>
+          <span>${escapeHtml(CATEGORIES[tool.category])}</span>
+        </button>
+      `,
+    )
+    .join("");
+  $$(".search-result-item").forEach((item) => {
+    item.addEventListener("mouseenter", () => {
+      state.searchIndex = Number(item.dataset.index || 0);
+    });
+    item.addEventListener("click", () => selectSearchTool(item.dataset.tool));
+  });
+}
+
+function selectSearchTool(toolId) {
+  const tool = TOOLS.find((item) => item.id === toolId);
+  if (!tool) return;
+  $("#toolSearchResults").classList.remove("active");
+  $("#toolSearchInput").blur();
+  activateCategory(tool.category);
+  activateTool(tool.id, { scroll: false });
+}
+
+function openToolFromHash() {
+  const initial = location.hash.replace("#", "");
+  const initialTool = TOOLS.find((tool) => tool.id === initial);
+  if (initialTool) {
+    activateCategory(initialTool.category);
+    activateTool(initialTool.id, { scroll: false });
+    return true;
+  }
+  return false;
 }
 
 function formatJson(minify = false) {
@@ -573,7 +738,6 @@ async function lookupIp(current = false) {
   let ip = $("#ipInput").value.trim();
   $("#ipLookupBtn").disabled = true;
   $("#currentIpBtn").disabled = true;
-  $("#browserLocationBtn").disabled = true;
   setMessage("#ipMessage", "查询中...");
   try {
     if (current || !ip) {
@@ -589,7 +753,7 @@ async function lookupIp(current = false) {
     renderResults($("#ipResults"), [
       ["IP", data.ip || ""],
       ["类型", data.type || ""],
-      ["IP所在地址", [data.country, data.region, data.city].filter(Boolean).join(" / ")],
+      ["IP所在地址", formatIpLocation(data)],
       ["运营商登记", data.connection?.isp || data.connection?.org || ""],
       ["ASN", data.connection?.asn ? `AS${data.connection.asn}` : ""],
       ["时区", data.timezone?.id || ""],
@@ -604,8 +768,17 @@ async function lookupIp(current = false) {
   } finally {
     $("#ipLookupBtn").disabled = false;
     $("#currentIpBtn").disabled = false;
-    $("#browserLocationBtn").disabled = false;
   }
+}
+
+function formatIpLocation(data) {
+  const country = String(data.country || "").trim();
+  const localValues = [data.region, data.city]
+    .flatMap((value) => String(value || "").split(/[,，]/))
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const parts = country ? [country] : [];
+  return [...parts, ...new Set(localValues)].join(" / ");
 }
 
 async function fetchCurrentIpv4() {
@@ -614,39 +787,6 @@ async function fetchCurrentIpv4() {
   const ip = (await response.text()).trim();
   if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) throw new Error("未获取到有效 IPv4");
   return ip;
-}
-
-function locateBrowser() {
-  if (!navigator.geolocation) {
-    setMessage("#ipMessage", "当前浏览器不支持定位");
-    return;
-  }
-
-  $("#browserLocationBtn").disabled = true;
-  setMessage("#ipMessage", "等待浏览器定位授权...");
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const { latitude, longitude, accuracy } = position.coords;
-      renderResults($("#realLocationResults"), [
-        ["真实位置", "浏览器定位授权返回"],
-        ["经纬度", `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`],
-        ["精度", `${Math.round(accuracy)} 米`],
-        ["更新时间", formatDateTime(new Date(position.timestamp))],
-      ]);
-      setMessage("#ipMessage", "真实位置来自浏览器定位，IP所在地址来自IP库，两者可能不同。");
-      $("#browserLocationBtn").disabled = false;
-    },
-    (error) => {
-      const messages = {
-        1: "定位权限被拒绝",
-        2: "无法获取当前位置",
-        3: "定位请求超时",
-      };
-      setMessage("#ipMessage", messages[error.code] || error.message);
-      $("#browserLocationBtn").disabled = false;
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-  );
 }
 
 function toEnumConstant(value) {
@@ -662,67 +802,46 @@ function toEnumConstant(value) {
     .toUpperCase() || "UNKNOWN";
 }
 
-function drawTree() {
-  const canvas = $("#treeCanvas");
-  const rect = canvas.getBoundingClientRect();
-  const scale = window.devicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.floor(rect.width * scale));
-  canvas.height = Math.max(1, Math.floor(rect.height * scale));
-
-  const ctx = canvas.getContext("2d");
-  ctx.scale(scale, scale);
-  ctx.clearRect(0, 0, rect.width, rect.height);
-  ctx.fillStyle = "#e9e0d0";
-  ctx.fillRect(0, 0, rect.width, rect.height);
-  ctx.strokeStyle = "rgba(32, 32, 29, 0.08)";
-  ctx.lineWidth = 1;
-  for (let x = 20; x < rect.width; x += 42) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x - 60, rect.height);
-    ctx.stroke();
-  }
-
-  const isNarrow = rect.width < 520;
-  const baseX = rect.width * (isNarrow ? 0.82 : 0.76);
-  const baseY = rect.height + 14;
-  ctx.lineCap = "round";
-
-  function branch(x, y, length, angle, width, depth) {
-    if (depth === 0) return;
-    const endX = x + Math.cos(angle) * length;
-    const endY = y + Math.sin(angle) * length;
-    ctx.strokeStyle = depth > 4 ? "#3d3026" : "rgba(82, 98, 77, 0.86)";
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(endX, endY);
-    ctx.stroke();
-    branch(endX, endY, length * 0.72, angle - 0.42, width * 0.72, depth - 1);
-    branch(endX, endY, length * 0.68, angle + 0.36, width * 0.68, depth - 1);
-  }
-
-  if (isNarrow) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(rect.width * 0.62, 0, rect.width * 0.38, rect.height);
-    ctx.clip();
-  }
-  branch(baseX, baseY, rect.height * 0.24, -Math.PI / 2, 16, 7);
-  if (isNarrow) ctx.restore();
-
-  ctx.fillStyle = "rgba(162, 96, 69, 0.16)";
-  for (let i = 0; i < 38; i += 1) {
-    const x = baseX - 190 + ((i * 47) % 340);
-    const y = 24 + ((i * 31) % 150);
-    ctx.beginPath();
-    ctx.arc(x, y, 3 + (i % 4), 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
 function bindEvents() {
-  $$(".tool-tab").forEach((tab) => tab.addEventListener("click", () => activateTool(tab.dataset.tool)));
+  $(".brand").addEventListener("click", (event) => {
+    event.preventDefault();
+    showHome();
+  });
+
+  $$(".category-link").forEach((button) => {
+    button.addEventListener("click", () => activateCategory(button.dataset.category));
+  });
+
+  $("#toolSearchInput").addEventListener("input", (event) => {
+    state.searchIndex = 0;
+    renderSearchResults(event.target.value);
+  });
+
+  $("#toolSearchInput").addEventListener("keydown", (event) => {
+    if (state.searchMatches.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      state.searchIndex = (state.searchIndex + 1) % state.searchMatches.length;
+      renderSearchResults(event.currentTarget.value);
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      state.searchIndex = (state.searchIndex - 1 + state.searchMatches.length) % state.searchMatches.length;
+      renderSearchResults(event.currentTarget.value);
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      selectSearchTool(state.searchMatches[state.searchIndex]?.id);
+    }
+    if (event.key === "Escape") {
+      $("#toolSearchResults").classList.remove("active");
+    }
+  });
+
+  $$(".output-search").forEach((input) => {
+    input.addEventListener("input", () => renderCode($(`#${input.dataset.searchOutput}`)));
+  });
+
   $$("[data-copy-from]").forEach((button) => {
     button.addEventListener("click", () => copyText(getCode($(`#${button.dataset.copyFrom}`))));
   });
@@ -746,9 +865,14 @@ function bindEvents() {
   $("#jwtBtn").addEventListener("click", parseJwt);
   $("#ipLookupBtn").addEventListener("click", () => lookupIp(false));
   $("#currentIpBtn").addEventListener("click", () => lookupIp(true));
-  $("#browserLocationBtn").addEventListener("click", locateBrowser);
   $("#enumBtn").addEventListener("click", generateEnum);
-  window.addEventListener("resize", drawTree);
+  window.addEventListener("hashchange", () => {
+    if (!location.hash) {
+      showHome();
+      return;
+    }
+    openToolFromHash();
+  });
 }
 
 function init() {
@@ -760,12 +884,13 @@ function init() {
   }).format(new Date());
 
   bindEvents();
-  drawTree();
+  renderToolTabs("format");
   convertTime();
   calcCron();
 
-  const initial = location.hash.replace("#", "");
-  if ($(`.tool-tab[data-tool="${initial}"]`)) activateTool(initial);
+  if (!openToolFromHash()) {
+    showHome();
+  }
 }
 
 init();
