@@ -76,10 +76,8 @@ const DAILY_ENCOURAGEMENTS = [
 const LIVE2D_ROLES = {
   default: {
     title: "默认",
-    path: "./assets/live2d/mingshi/mingshi.model3.json",
-    scale: 0.18,
-    motionGroup: "",
-    tapMotions: [7, 8, 13, 14],
+    fallback: true,
+    tapMotions: [],
   },
   female: {
     title: "女性",
@@ -1381,10 +1379,27 @@ async function initLive2dCompanion(options = {}) {
   const companion = $("#siteCompanion");
   const canvas = $("#live2dCanvas");
   if (!companion || !canvas) return;
-  if (!window.PIXI?.Application || !window.PIXI?.live2d?.Live2DModel) return;
   const roleKey = state.settings?.live2dRole || DEFAULT_SETTINGS.live2dRole;
   const role = LIVE2D_ROLES[roleKey] || LIVE2D_ROLES.default;
   if (!options.force && companion.live2dRole === roleKey && companion.live2dModel) return;
+
+  companion.live2dRole = roleKey;
+  companion.classList.toggle("is-fallback-companion", Boolean(role.fallback));
+  companion.classList.toggle("is-live2d-loading", !role.fallback);
+  companion.classList.remove("is-live2d-ready");
+
+  if (role.fallback) {
+    companion.live2dApp?.stage?.removeChildren().forEach((child) => child.destroy?.({ children: true }));
+    companion.live2dModel = null;
+    companion.classList.remove("is-live2d-loading");
+    return;
+  }
+
+  if (!window.PIXI?.Application || !window.PIXI?.live2d?.Live2DModel) {
+    companion.classList.remove("is-live2d-loading");
+    companion.classList.add("is-fallback-companion");
+    return;
+  }
 
   try {
     const app =
@@ -1399,7 +1414,6 @@ async function initLive2dCompanion(options = {}) {
         antialias: true,
       });
     app.stage.removeChildren().forEach((child) => child.destroy?.({ children: true }));
-    companion.classList.remove("is-live2d-ready");
     companion.live2dModel = null;
     const model = await PIXI.live2d.Live2DModel.from(role.path, { autoInteract: false });
     model.anchor.set(0.5, 0.9);
@@ -1408,10 +1422,12 @@ async function initLive2dCompanion(options = {}) {
     model.interactive = false;
     app.stage.addChild(model);
     companion.classList.add("is-live2d-ready");
+    companion.classList.remove("is-live2d-loading");
     companion.live2dApp = app;
     companion.live2dModel = model;
-    companion.live2dRole = roleKey;
   } catch (error) {
+    companion.classList.remove("is-live2d-loading");
+    companion.classList.add("is-fallback-companion");
     console.warn("Live2D companion failed to load", error);
   }
 }

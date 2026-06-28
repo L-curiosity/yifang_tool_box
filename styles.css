@@ -914,6 +914,16 @@ select:focus {
   background: transparent;
 }
 
+.site-companion.is-fallback-companion {
+  gap: 2px;
+}
+
+.site-companion.is-fallback-companion .companion-stage {
+  width: 128px;
+  height: 124px;
+  justify-self: end;
+}
+
 .companion-stage:focus-visible,
 .companion-toggle:focus-visible {
   outline: 3px solid rgba(66, 95, 119, 0.28);
@@ -934,6 +944,10 @@ select:focus {
   width: 190px;
   height: 190px;
   transform: translateY(6px);
+}
+
+.site-companion.is-live2d-loading .companion-fallback {
+  visibility: hidden;
 }
 
 .site-companion.is-live2d-ready .live2d-canvas {
