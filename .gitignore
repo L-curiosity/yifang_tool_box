@@ -1,5 +1,7 @@
 node_modules/
 screenshots/
+output/
+live2d_lab/
 .DS_Store
 npm-debug.log*
 package.json

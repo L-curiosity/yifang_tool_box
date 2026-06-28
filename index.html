@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="./logo.svg?v=20260628" />
     <link rel="stylesheet" href="./styles.css?v=20260628" />
   </head>
-  <body>
+  <body class="app-loading">
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#" aria-label="Yifang Toolbox">
@@ -21,7 +21,16 @@
           <button class="category-link" type="button" data-category="time">时间戳</button>
           <button class="category-link" type="button" data-category="parse">IP JWT等</button>
         </nav>
-        <div class="visit-pill" id="visitCounter">访问量 --</div>
+        <div class="settings-menu" id="settingsMenu">
+          <button class="settings-button" id="settingsButton" type="button" aria-label="打开配置" aria-expanded="false">⚙</button>
+          <div class="settings-panel" id="settingsPanel" hidden>
+            <div class="settings-panel-head">
+              <strong>配置</strong>
+              <button class="settings-close" id="settingsClose" type="button" aria-label="关闭配置">×</button>
+            </div>
+            <div class="settings-content" id="settingsContent"></div>
+          </div>
+        </div>
       </header>
 
       <main class="main-content">
@@ -298,8 +307,31 @@
           </div>
         </section>
       </main>
+
+      <aside class="site-companion" id="siteCompanion" aria-label="站点伙伴">
+        <div class="companion-bubble" id="companionBubble">需要工具时，先搜一下会更快。</div>
+        <button class="companion-stage" id="companionStage" type="button" aria-label="切换工具伙伴提示">
+          <canvas class="live2d-canvas" id="live2dCanvas" width="240" height="240" aria-hidden="true"></canvas>
+          <span class="companion-figure companion-fallback" id="companionFallback" aria-hidden="true">
+            <span class="companion-antenna"></span>
+            <span class="companion-face">
+              <span class="companion-eye eye-left"></span>
+              <span class="companion-eye eye-right"></span>
+              <span class="companion-mouth"></span>
+            </span>
+            <span class="companion-body">
+              <span class="companion-badge"></span>
+            </span>
+          </span>
+        </button>
+        <button class="companion-toggle" id="companionToggle" type="button" aria-label="收起工具伙伴">收起</button>
+      </aside>
     </div>
 
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <script src="./assets/live2d/runtime/live2d.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

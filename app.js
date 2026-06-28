@@ -6,7 +6,7 @@ const CATEGORIES = {
   format: "格式化",
   convert: "转换",
   time: "时间戳",
-  parse: "IP / JWT",
+  parse: "IP JWT等",
   generate: "生成",
 };
 
@@ -21,14 +21,87 @@ const TOOLS = [
   { id: "cron", title: "Cron", fullTitle: "Cron 表达式", category: "time", aliases: ["cron", "定时", "表达式"] },
   { id: "jwt", title: "JWT", fullTitle: "JWT 解析", category: "parse", aliases: ["jwt", "token", "解析", "登录"] },
   { id: "ip", title: "IP 地址", fullTitle: "IP 地址查询", category: "parse", aliases: ["ip", "地址", "公网", "归属地"] },
-  { id: "enum", title: "枚举", fullTitle: "枚举生成器", category: "generate", aliases: ["enum", "枚举", "生成"] },
+  { id: "enum", title: "枚举", fullTitle: "枚举生成器", category: "parse", aliases: ["enum", "枚举", "生成"] },
 ];
+
+const CATEGORY_ORDER = ["format", "convert", "time", "parse"];
+const SETTINGS_STORAGE_KEY = "yifang_toolbox_settings";
+const DEFAULT_SETTINGS = {
+  categories: CATEGORY_ORDER,
+  tools: TOOLS.map((tool) => tool.id),
+  live2dRole: "default",
+};
 
 const state = {
   activeCategory: null,
   searchIndex: 0,
   searchMatches: [],
   inToolsView: false,
+  companionTipIndex: 0,
+  dailyEncouragementVisible: false,
+  settings: null,
+};
+
+const COMPANION_TIPS = [
+  "需要工具时，先搜一下会更快。",
+  "JSON 很长的话，左右分栏更适合对照。",
+  "结果框右上角可以搜关键词，也可以直接复制。",
+  "SQL 转实体前，保留 COMMENT 会生成字段注释。",
+  "IP 归属地来自公开 IP 库，不等于你的真实位置。",
+];
+
+const DAILY_ENCOURAGEMENTS = [
+  "愿你今天被温柔以待，也记得温柔地对待自己。",
+  "慢慢来，好的事情会在自己的节奏里长出来。",
+  "你不需要一直发光，安静地恢复也很珍贵。",
+  "先照顾好此刻的自己，路会一点点清晰起来。",
+  "愿今天有一件小事，让你觉得生活还不错。",
+  "不要急着追赶风，先听听自己的呼吸。",
+  "真正重要的东西，往往值得慢一点靠近。",
+  "愿你拥有松弛的心，也拥有重新开始的勇气。",
+  "每个平凡的今天，都可以藏着一点小小的好运。",
+  "山高路远，看世界，也找自己。",
+  "你已经走过很多路，今天也可以轻轻往前一点。",
+  "愿你心里有光，脚下有路，身边有温暖。",
+  "即使只是普通的一天，也值得被认真生活。",
+  "不必事事圆满，留一点空白给风和月亮。",
+  "愿你在忙碌里，仍能遇见片刻的安宁。",
+  "向前走时，也别忘了看看沿途的花。",
+  "愿今天的你，比昨天更自在一点。",
+  "世界很大，先把自己安放好。",
+  "愿所有不容易，都慢慢变成刚刚好。",
+  "把心放宽一点，好运也许正在路上。",
+];
+
+const LIVE2D_ROLES = {
+  default: {
+    title: "默认",
+    path: "./assets/live2d/mingshi/mingshi.model3.json",
+    scale: 0.18,
+    motionGroup: "",
+    tapMotions: [7, 8, 13, 14],
+  },
+  female: {
+    title: "女性",
+    path: "./assets/live2d/mingshi/mingshi.model3.json",
+    scale: 0.18,
+    motionGroup: "",
+    tapMotions: [7, 8, 13, 14],
+  },
+  male: {
+    title: "男性",
+    path: "./assets/live2d/chiaki_kitty/chiaki_kitty.model.json",
+    scale: 0.145,
+    motionGroup: "tap",
+    tapMotions: [0, 1, 2],
+  },
+  pet: {
+    title: "宠物",
+    path: "./assets/live2d/penchan/penchan.model.json",
+    scale: 0.22,
+    motionGroup: "",
+    tapMotions: [],
+  },
 };
 
 function escapeHtml(value) {
@@ -43,6 +116,72 @@ function escapeHtml(value) {
 function setMessage(id, text = "") {
   const node = $(id);
   if (node) node.textContent = text;
+}
+
+function cloneDefaultSettings() {
+  return {
+    categories: [...DEFAULT_SETTINGS.categories],
+    tools: [...DEFAULT_SETTINGS.tools],
+    live2dRole: DEFAULT_SETTINGS.live2dRole,
+  };
+}
+
+function loadSettings() {
+  let settings = cloneDefaultSettings();
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "null");
+    if (saved && typeof saved === "object") {
+      settings = {
+        categories: Array.isArray(saved.categories) ? saved.categories : settings.categories,
+        tools: Array.isArray(saved.tools) ? saved.tools : settings.tools,
+        live2dRole: LIVE2D_ROLES[saved.live2dRole] ? saved.live2dRole : settings.live2dRole,
+      };
+    }
+  } catch (error) {
+    settings = cloneDefaultSettings();
+  }
+  return normalizeSettings(settings);
+}
+
+function normalizeSettings(settings) {
+  const validCategories = new Set(CATEGORY_ORDER);
+  const validTools = new Set(TOOLS.map((tool) => tool.id));
+  settings.categories = settings.categories.filter((category) => validCategories.has(category));
+  settings.tools = settings.tools.filter((tool) => validTools.has(tool));
+  if (settings.categories.length === 0) settings.categories = [DEFAULT_SETTINGS.categories[0]];
+  CATEGORY_ORDER.forEach((category) => {
+    const categoryTools = TOOLS.filter((tool) => tool.category === category).map((tool) => tool.id);
+    if (categoryTools.length > 0 && !categoryTools.some((tool) => settings.tools.includes(tool))) {
+      settings.tools.push(categoryTools[0]);
+    }
+  });
+  if (!LIVE2D_ROLES[settings.live2dRole]) settings.live2dRole = DEFAULT_SETTINGS.live2dRole;
+  return settings;
+}
+
+function saveSettings() {
+  state.settings = normalizeSettings(state.settings || cloneDefaultSettings());
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.settings));
+}
+
+function isCategoryEnabled(category) {
+  return state.settings?.categories.includes(category);
+}
+
+function isToolEnabled(toolId) {
+  return state.settings?.tools.includes(toolId);
+}
+
+function getEnabledCategories() {
+  return CATEGORY_ORDER.filter((category) => isCategoryEnabled(category));
+}
+
+function getVisibleTools() {
+  return TOOLS.filter((tool) => isCategoryEnabled(tool.category) && isToolEnabled(tool.id));
+}
+
+function getCategoryTools(category) {
+  return TOOLS.filter((tool) => tool.category === category);
 }
 
 async function copyText(value) {
@@ -158,6 +297,7 @@ function escapeRegExp(value) {
 
 function showHome() {
   state.inToolsView = false;
+  $(".app-shell").classList.remove("tools-mode");
   $("#home").classList.remove("hidden");
   $(".tools-section").classList.add("hidden");
   $$(".category-link").forEach((button) => button.classList.remove("active"));
@@ -169,11 +309,17 @@ function showHome() {
 
 function showTools() {
   state.inToolsView = true;
+  $(".app-shell").classList.add("tools-mode");
   $("#home").classList.add("hidden");
   $(".tools-section").classList.remove("hidden");
 }
 
 function activateTool(tool, options = {}) {
+  if (!getVisibleTools().some((item) => item.id === tool)) {
+    const fallbackTool = getVisibleTools()[0];
+    if (!fallbackTool) return showHome();
+    return activateTool(fallbackTool.id, options);
+  }
   showTools();
   $$(".tool-tab").forEach((tab) => {
     const active = tab.dataset.tool === tool;
@@ -191,6 +337,15 @@ function activateTool(tool, options = {}) {
   }
 }
 
+function renderCategoryNav() {
+  $(".category-nav").innerHTML = getEnabledCategories()
+    .map((category) => `<button class="category-link" type="button" data-category="${category}">${escapeHtml(CATEGORIES[category])}</button>`)
+    .join("");
+  $$(".category-link").forEach((button) => {
+    button.addEventListener("click", () => activateCategory(button.dataset.category));
+  });
+}
+
 function renderToolTabs(category = state.activeCategory) {
   const visibleTools = getToolsByCategory(category);
   $(".tool-tabs").innerHTML = visibleTools
@@ -201,10 +356,16 @@ function renderToolTabs(category = state.activeCategory) {
 }
 
 function getToolsByCategory(category) {
-  return category === "all" ? TOOLS : TOOLS.filter((tool) => tool.category === category);
+  if (category === "all") return getVisibleTools();
+  if (!isCategoryEnabled(category)) return [];
+  return getVisibleTools().filter((tool) => tool.category === category);
 }
 
 function activateCategory(category) {
+  if (!isCategoryEnabled(category)) {
+    category = getEnabledCategories()[0];
+  }
+  if (!category) return showHome();
   showTools();
   state.activeCategory = category;
   $$(".category-link").forEach((button) => {
@@ -219,7 +380,7 @@ function activateCategory(category) {
 function searchTools(query) {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return [];
-  return TOOLS.filter((tool) => {
+  return getVisibleTools().filter((tool) => {
     const haystack = [tool.title, tool.fullTitle, CATEGORIES[tool.category], ...tool.aliases].join(" ").toLowerCase();
     return haystack.includes(normalized);
   });
@@ -250,7 +411,7 @@ function renderSearchResults(query) {
 }
 
 function selectSearchTool(toolId) {
-  const tool = TOOLS.find((item) => item.id === toolId);
+  const tool = getVisibleTools().find((item) => item.id === toolId);
   if (!tool) return;
   $("#toolSearchResults").classList.remove("active");
   $("#toolSearchInput").blur();
@@ -260,7 +421,7 @@ function selectSearchTool(toolId) {
 
 function openToolFromHash() {
   const initial = location.hash.replace("#", "");
-  const initialTool = TOOLS.find((tool) => tool.id === initial);
+  const initialTool = getVisibleTools().find((tool) => tool.id === initial);
   if (initialTool) {
     activateCategory(initialTool.category);
     activateTool(initialTool.id, { scroll: false });
@@ -935,10 +1096,6 @@ function bindEvents() {
     showHome();
   });
 
-  $$(".category-link").forEach((button) => {
-    button.addEventListener("click", () => activateCategory(button.dataset.category));
-  });
-
   $("#toolSearchInput").addEventListener("input", (event) => {
     state.searchIndex = 0;
     renderSearchResults(event.target.value);
@@ -993,6 +1150,8 @@ function bindEvents() {
   $("#ipLookupBtn").addEventListener("click", () => lookupIp(false));
   $("#currentIpBtn").addEventListener("click", () => lookupIp(true));
   $("#enumBtn").addEventListener("click", generateEnum);
+  bindSettingsPanel();
+  bindCompanion();
   window.addEventListener("hashchange", () => {
     if (!location.hash) {
       showHome();
@@ -1002,17 +1161,284 @@ function bindEvents() {
   });
 }
 
-function init() {
-  updateVisitCounter();
+function bindSettingsPanel() {
+  const menu = $("#settingsMenu");
+  const button = $("#settingsButton");
+  const panel = $("#settingsPanel");
+  const close = $("#settingsClose");
+  if (!menu || !button || !panel || !close) return;
 
+  const setOpen = (open) => {
+    panel.hidden = !open;
+    button.setAttribute("aria-expanded", String(open));
+    document.body.classList.toggle("settings-open", open);
+    if (open) renderSettingsPanel();
+  };
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setOpen(panel.hidden);
+  });
+  close.addEventListener("click", () => setOpen(false));
+  panel.addEventListener("click", (event) => event.stopPropagation());
+  document.addEventListener("click", (event) => {
+    if (!panel.hidden && !menu.contains(event.target)) setOpen(false);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOpen(false);
+  });
+}
+
+function renderSettingsPanel() {
+  const content = $("#settingsContent");
+  if (!content) return;
+  const enabledCategories = getEnabledCategories();
+  const roleRows = Object.entries(LIVE2D_ROLES)
+    .map(
+      ([role, config]) => `
+        <label class="settings-radio">
+          <span>${escapeHtml(config.title)}</span>
+          <input type="radio" name="live2dRole" value="${role}" ${state.settings.live2dRole === role ? "checked" : ""} data-setting-role />
+        </label>
+      `,
+    )
+    .join("");
+
+  const toolGroups = CATEGORY_ORDER.map((category) => {
+    const categoryEnabled = isCategoryEnabled(category);
+    const categoryTools = getCategoryTools(category);
+    const enabledToolCount = categoryTools.filter((tool) => isToolEnabled(tool.id)).length;
+    const toolRows = categoryTools
+      .map((tool) => {
+        const checked = isToolEnabled(tool.id);
+        const disabled = !categoryEnabled || (checked && enabledToolCount <= 1);
+        return `
+          <label class="settings-check">
+            <span>${escapeHtml(tool.fullTitle)}</span>
+            <input type="checkbox" data-setting-tool="${tool.id}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} />
+          </label>
+        `;
+      })
+      .join("");
+    return `
+      <div class="settings-subgroup" aria-disabled="${categoryEnabled ? "false" : "true"}">
+        <div class="settings-subtitle">${escapeHtml(CATEGORIES[category])}</div>
+        ${toolRows}
+      </div>
+    `;
+  }).join("");
+
+  content.innerHTML = `
+    <section class="settings-group">
+      <div class="settings-group-title"><span>顶部 Tab</span><span>${enabledCategories.length}/${CATEGORY_ORDER.length}</span></div>
+      <div class="settings-group-note">至少保留一个。关闭后，对应工具也不会出现在首页搜索里。</div>
+      ${CATEGORY_ORDER.map((category) => {
+        const checked = isCategoryEnabled(category);
+        const disabled = checked && enabledCategories.length <= 1;
+        return `
+          <label class="settings-check">
+            <span>${escapeHtml(CATEGORIES[category])}</span>
+            <input type="checkbox" data-setting-category="${category}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} />
+          </label>
+        `;
+      }).join("")}
+    </section>
+    <section class="settings-group">
+      <div class="settings-group-title"><span>子 Tab</span></div>
+      <div class="settings-group-note">每个开启的顶部 Tab 至少保留一个子工具。</div>
+      ${toolGroups}
+    </section>
+    <section class="settings-group">
+      <div class="settings-group-title"><span>Live2D 角色</span></div>
+      <div class="settings-group-note">当前只展示一个角色。</div>
+      ${roleRows}
+    </section>
+  `;
+
+  $$("[data-setting-category]").forEach((input) => {
+    input.addEventListener("change", () => updateCategorySetting(input.dataset.settingCategory, input.checked));
+  });
+  $$("[data-setting-tool]").forEach((input) => {
+    input.addEventListener("change", () => updateToolSetting(input.dataset.settingTool, input.checked));
+  });
+  $$("[data-setting-role]").forEach((input) => {
+    input.addEventListener("change", () => updateRoleSetting(input.value));
+  });
+}
+
+function updateCategorySetting(category, enabled) {
+  const categories = new Set(state.settings.categories);
+  if (enabled) categories.add(category);
+  if (!enabled && categories.size > 1) categories.delete(category);
+  state.settings.categories = CATEGORY_ORDER.filter((item) => categories.has(item));
+  saveSettings();
+  applySettingsChange();
+}
+
+function updateToolSetting(toolId, enabled) {
+  const tool = TOOLS.find((item) => item.id === toolId);
+  if (!tool) return;
+  const tools = new Set(state.settings.tools);
+  const categoryToolIds = getCategoryTools(tool.category).map((item) => item.id);
+  const enabledCount = categoryToolIds.filter((id) => tools.has(id)).length;
+  if (enabled) tools.add(toolId);
+  if (!enabled && enabledCount > 1) tools.delete(toolId);
+  state.settings.tools = TOOLS.map((item) => item.id).filter((id) => tools.has(id));
+  saveSettings();
+  applySettingsChange();
+}
+
+function updateRoleSetting(role) {
+  if (!LIVE2D_ROLES[role]) return;
+  state.settings.live2dRole = role;
+  saveSettings();
+  renderSettingsPanel();
+  initLive2dCompanion({ force: true });
+}
+
+function applySettingsChange() {
+  saveSettings();
+  renderCategoryNav();
+  renderSettingsPanel();
+  renderSearchResults($("#toolSearchInput")?.value || "");
+
+  const visibleTools = getVisibleTools();
+  if (visibleTools.length === 0) return showHome();
+  if (!state.inToolsView) return;
+
+  if (!isCategoryEnabled(state.activeCategory)) {
+    activateCategory(getEnabledCategories()[0]);
+    return;
+  }
+
+  const categoryTools = renderToolTabs(state.activeCategory);
+  const activeTool = $(".tool-card.active")?.dataset.toolPanel;
+  if (!categoryTools.some((tool) => tool.id === activeTool)) {
+    activateTool(categoryTools[0]?.id || visibleTools[0].id, { scroll: false });
+  }
+}
+
+function bindCompanion() {
+  const companion = $("#siteCompanion");
+  const bubble = $("#companionBubble");
+  const stage = $("#companionStage");
+  const toggle = $("#companionToggle");
+  if (!companion || !bubble || !stage || !toggle) return;
+
+  const collapsed = localStorage.getItem("yifang_toolbox_companion_collapsed") === "1";
+  setCompanionCollapsed(collapsed);
+  showDailyEncouragementIfNeeded(bubble);
+
+  stage.addEventListener("click", () => {
+    state.dailyEncouragementVisible = false;
+    companion.classList.remove("has-daily-encouragement");
+    state.companionTipIndex = (state.companionTipIndex + 1) % COMPANION_TIPS.length;
+    bubble.textContent = COMPANION_TIPS[state.companionTipIndex];
+    playCompanionMotion();
+  });
+
+  toggle.addEventListener("click", () => {
+    setCompanionCollapsed(!companion.classList.contains("is-collapsed"));
+  });
+
+  initLive2dCompanion();
+}
+
+function showDailyEncouragementIfNeeded(bubble) {
+  const today = getLocalDateKey();
+  const dateKey = "yifang_toolbox_daily_encouragement_date";
+  const indexKey = "yifang_toolbox_daily_encouragement_index";
+  if (localStorage.getItem(dateKey) === today) return;
+
+  const index = Math.floor(Math.random() * DAILY_ENCOURAGEMENTS.length);
+  bubble.textContent = DAILY_ENCOURAGEMENTS[index];
+  state.dailyEncouragementVisible = true;
+  $("#siteCompanion")?.classList.add("has-daily-encouragement");
+  localStorage.setItem(dateKey, today);
+  localStorage.setItem(indexKey, String(index));
+  setCompanionCollapsed(false);
+  playCompanionMotion();
+}
+
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function setCompanionCollapsed(collapsed) {
+  const companion = $("#siteCompanion");
+  const toggle = $("#companionToggle");
+  if (!companion || !toggle) return;
+  companion.classList.toggle("is-collapsed", collapsed);
+  toggle.textContent = collapsed ? "伙伴" : "收起";
+  toggle.setAttribute("aria-label", collapsed ? "展开工具伙伴" : "收起工具伙伴");
+  localStorage.setItem("yifang_toolbox_companion_collapsed", collapsed ? "1" : "0");
+}
+
+async function initLive2dCompanion(options = {}) {
+  const companion = $("#siteCompanion");
+  const canvas = $("#live2dCanvas");
+  if (!companion || !canvas) return;
+  if (!window.PIXI?.Application || !window.PIXI?.live2d?.Live2DModel) return;
+  const roleKey = state.settings?.live2dRole || DEFAULT_SETTINGS.live2dRole;
+  const role = LIVE2D_ROLES[roleKey] || LIVE2D_ROLES.default;
+  if (!options.force && companion.live2dRole === roleKey && companion.live2dModel) return;
+
+  try {
+    const app =
+      companion.live2dApp ||
+      new PIXI.Application({
+        view: canvas,
+        width: 240,
+        height: 240,
+        autoStart: true,
+        transparent: true,
+        backgroundAlpha: 0,
+        antialias: true,
+      });
+    app.stage.removeChildren().forEach((child) => child.destroy?.({ children: true }));
+    companion.classList.remove("is-live2d-ready");
+    companion.live2dModel = null;
+    const model = await PIXI.live2d.Live2DModel.from(role.path, { autoInteract: false });
+    model.anchor.set(0.5, 0.9);
+    model.position.set(120, 218);
+    model.scale.set(role.scale);
+    model.interactive = false;
+    app.stage.addChild(model);
+    companion.classList.add("is-live2d-ready");
+    companion.live2dApp = app;
+    companion.live2dModel = model;
+    companion.live2dRole = roleKey;
+  } catch (error) {
+    console.warn("Live2D companion failed to load", error);
+  }
+}
+
+function playCompanionMotion() {
+  const model = $("#siteCompanion")?.live2dModel;
+  if (!model?.motion) return;
+  const role = LIVE2D_ROLES[state.settings?.live2dRole || DEFAULT_SETTINGS.live2dRole] || LIVE2D_ROLES.default;
+  if (!role.tapMotions.length) return;
+  const motionIndex = role.tapMotions[Math.floor(Math.random() * role.tapMotions.length)];
+  model.motion(role.motionGroup, motionIndex).catch(() => {});
+}
+
+function init() {
+  state.settings = loadSettings();
+
+  renderCategoryNav();
   bindEvents();
-  renderToolTabs("format");
+  renderToolTabs(getEnabledCategories()[0]);
   convertTime();
   calcCron();
 
   if (!openToolFromHash()) {
     showHome();
   }
+  document.body.classList.remove("app-loading");
+  document.body.classList.add("app-ready");
 }
 
 function updateVisitCounter() {
