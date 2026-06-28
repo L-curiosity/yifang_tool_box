@@ -1462,6 +1462,8 @@ function init() {
 }
 
 function updateVisitCounter() {
+  const counter = $("#visitCounter");
+  if (!counter) return;
   const key = "yifang_toolbox_visit_count";
   const sessionKey = "yifang_toolbox_visit_counted";
   let current = Number(localStorage.getItem(key) || "0");
@@ -1471,8 +1473,8 @@ function updateVisitCounter() {
     sessionStorage.setItem(sessionKey, "1");
   }
   localStorage.setItem(key, String(current));
-  $("#visitCounter").textContent = `访问量 ${current.toLocaleString("zh-CN")}`;
-  $("#visitCounter").title = "当前浏览器本地会话访问次数，刷新不重复计数";
+  counter.textContent = `访问量 ${current.toLocaleString("zh-CN")}`;
+  counter.title = "当前浏览器本地会话访问次数，刷新不重复计数";
 }
 
 init();
