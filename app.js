@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS = {
   categories: CATEGORY_ORDER,
   tools: TOOLS.map((tool) => tool.id),
   live2dRole: "default",
+  codeTheme: "github-dark",
 };
 
 const state = {
@@ -103,6 +104,25 @@ const LIVE2D_ROLES = {
   },
 };
 
+const CODE_THEMES = {
+  "github-dark": {
+    title: "GitHub Dark",
+    href: "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/styles/github-dark.min.css",
+  },
+  "github": {
+    title: "GitHub Light",
+    href: "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/styles/github.min.css",
+  },
+  "atom-one-dark": {
+    title: "Atom One Dark",
+    href: "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/styles/atom-one-dark.min.css",
+  },
+  "vs2015": {
+    title: "VS 2015",
+    href: "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/styles/vs2015.min.css",
+  },
+};
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -122,6 +142,7 @@ function cloneDefaultSettings() {
     categories: [...DEFAULT_SETTINGS.categories],
     tools: [...DEFAULT_SETTINGS.tools],
     live2dRole: DEFAULT_SETTINGS.live2dRole,
+    codeTheme: DEFAULT_SETTINGS.codeTheme,
   };
 }
 
@@ -134,6 +155,7 @@ function loadSettings() {
         categories: Array.isArray(saved.categories) ? saved.categories : settings.categories,
         tools: Array.isArray(saved.tools) ? saved.tools : settings.tools,
         live2dRole: LIVE2D_ROLES[saved.live2dRole] ? saved.live2dRole : settings.live2dRole,
+        codeTheme: CODE_THEMES[saved.codeTheme] ? saved.codeTheme : settings.codeTheme,
       };
     }
   } catch (error) {
@@ -155,6 +177,7 @@ function normalizeSettings(settings) {
     }
   });
   if (!LIVE2D_ROLES[settings.live2dRole]) settings.live2dRole = DEFAULT_SETTINGS.live2dRole;
+  if (!CODE_THEMES[settings.codeTheme]) settings.codeTheme = DEFAULT_SETTINGS.codeTheme;
   return settings;
 }
 
@@ -1178,6 +1201,16 @@ function renderSettingsPanel() {
       `,
     )
     .join("");
+  const codeThemeRows = Object.entries(CODE_THEMES)
+    .map(
+      ([theme, config]) => `
+        <label class="settings-radio">
+          <span>${escapeHtml(config.title)}</span>
+          <input type="radio" name="codeTheme" value="${theme}" ${state.settings.codeTheme === theme ? "checked" : ""} data-setting-code-theme />
+        </label>
+      `,
+    )
+    .join("");
 
   const toolGroups = CATEGORY_ORDER.map((category) => {
     const categoryEnabled = isCategoryEnabled(category);
@@ -1228,6 +1261,11 @@ function renderSettingsPanel() {
       <div class="settings-group-note">当前只展示一个角色。</div>
       ${roleRows}
     </section>
+    <section class="settings-group">
+      <div class="settings-group-title"><span>代码块主题</span></div>
+      <div class="settings-group-note">当前默认匹配本机 VSCode 的 GitHub Dark。</div>
+      ${codeThemeRows}
+    </section>
   `;
 
   $$("[data-setting-category]").forEach((input) => {
@@ -1238,6 +1276,9 @@ function renderSettingsPanel() {
   });
   $$("[data-setting-role]").forEach((input) => {
     input.addEventListener("change", () => updateRoleSetting(input.value));
+  });
+  $$("[data-setting-code-theme]").forEach((input) => {
+    input.addEventListener("change", () => updateCodeThemeSetting(input.value));
   });
 }
 
@@ -1269,6 +1310,22 @@ function updateRoleSetting(role) {
   saveSettings();
   renderSettingsPanel();
   initLive2dCompanion({ force: true });
+}
+
+function updateCodeThemeSetting(theme) {
+  if (!CODE_THEMES[theme]) return;
+  state.settings.codeTheme = theme;
+  saveSettings();
+  applyCodeTheme();
+  renderSettingsPanel();
+}
+
+function applyCodeTheme() {
+  const theme = CODE_THEMES[state.settings?.codeTheme] || CODE_THEMES[DEFAULT_SETTINGS.codeTheme];
+  const link = $("#codeThemeStylesheet");
+  if (link && link.getAttribute("href") !== theme.href) {
+    link.setAttribute("href", theme.href);
+  }
 }
 
 function applySettingsChange() {
@@ -1425,6 +1482,7 @@ function playCompanionMotion() {
 
 function init() {
   state.settings = loadSettings();
+  applyCodeTheme();
 
   renderCategoryNav();
   bindEvents();
