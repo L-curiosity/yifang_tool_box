@@ -585,6 +585,35 @@ textarea {
   grid-template-columns: minmax(260px, 1fr) auto auto;
 }
 
+.enum-config-grid {
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+}
+
+.enum-top-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.enum-top-row .preview-toolbar {
+  width: 100%;
+}
+
+.enum-config-grid .check-row {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf1;
+  white-space: nowrap;
+}
+
+.enum-config-grid .primary-button {
+  justify-self: end;
+}
+
 .tip-field {
   position: relative;
   min-width: 0;
@@ -1199,6 +1228,10 @@ select:focus {
     align-items: flex-start;
     flex-direction: column;
     display: flex;
+  }
+
+  .enum-top-row {
+    grid-template-columns: 1fr;
   }
 
   .tool-heading,

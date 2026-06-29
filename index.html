@@ -284,20 +284,20 @@
               <header>
                 <div class="tool-heading">
                   <div class="tool-title"><span class="tool-index">11</span><h3>枚举生成器</h3></div>
-                  <div class="title-actions">
-                    <button class="primary-button" id="enumBtn" type="button">生成</button>
-                  </div>
+                </div>
+              </header>
+              <div class="enum-top-row">
+                <div class="inline-grid enum-config-grid">
+                  <input id="enumClassName" type="text" value="AuthStatusEnum" placeholder="枚举类名" />
+                  <label class="check-row"><input id="enumLombok" type="checkbox" /> Lombok Getter</label>
+                  <button class="primary-button" id="enumBtn" type="button">生成</button>
                 </div>
                 <div class="preview-toolbar">
                   <input class="output-search" type="search" data-search-output="enumOutput" placeholder="在结果中搜索" />
                   <button class="ghost-button" data-copy-from="enumOutput" type="button">复制</button>
                 </div>
-              </header>
+              </div>
               <div class="tool-inputs">
-                <div class="inline-grid">
-                  <input id="enumClassName" type="text" value="AuthStatusEnum" placeholder="枚举类名" />
-                  <label class="check-row"><input id="enumLombok" type="checkbox" /> Lombok Getter</label>
-                </div>
                 <textarea id="enumInput" class="tool-textarea" spellcheck="false" placeholder="0 未认证 NOT_AUTH&#10;1 已认证 AUTHED&#10;2 认证失败 AUTH_FAILED"></textarea>
                 <p class="tool-message" id="enumMessage"></p>
               </div>
