@@ -211,14 +211,10 @@ function setCode(target, value, lang = "text") {
 function renderCode(target) {
   const text = target.dataset.raw || "";
   const lang = target.dataset.lang || "text";
-  target.innerHTML =
-    lang === "json"
-      ? highlightJson(text)
-      : lang === "sql"
-        ? highlightSql(text)
-        : lang === "java"
-          ? highlightJava(text)
-          : highlightPlain(text);
+  const language = normalizeHighlightLanguage(lang);
+  target.className = `tool-output${target.classList.contains("code-output") ? " code-output" : ""}`;
+  target.dataset.language = language;
+  target.innerHTML = `<code class="hljs language-${language}">${highlightCode(text, language)}</code>`;
   const query = $(`.output-search[data-search-output="${target.id}"]`)?.value.trim() || "";
   if (query) markSearchHits(target, query);
 }
@@ -227,43 +223,23 @@ function getCode(target) {
   return target.dataset.raw || target.textContent || "";
 }
 
-function highlightJson(text) {
-  return escapeHtml(text).replace(
-    /(&quot;(?:\\u[\da-fA-F]{4}|\\[^u]|(?!&quot;).)*&quot;(?=\s*:))|(&quot;(?:\\u[\da-fA-F]{4}|\\[^u]|(?!&quot;).)*&quot;)|\b(true|false)\b|\b(null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
-    (match, key, string, bool, nil, number) => {
-      if (key) return `<span class="tok-key">${key}</span>`;
-      if (string) return `<span class="tok-string">${string}</span>`;
-      if (bool) return `<span class="tok-bool">${bool}</span>`;
-      if (nil) return `<span class="tok-null">${nil}</span>`;
-      if (number) return `<span class="tok-number">${number}</span>`;
-      return match;
-    },
-  );
+function normalizeHighlightLanguage(lang) {
+  const languageMap = {
+    json: "json",
+    sql: "sql",
+    java: "java",
+    text: "plaintext",
+  };
+  return languageMap[lang] || "plaintext";
 }
 
-function highlightSql(text) {
-  const keywords =
-    /\b(SELECT|FROM|WHERE|LEFT|RIGHT|INNER|JOIN|ON|AND|OR|GROUP|BY|ORDER|HAVING|LIMIT|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|PRIMARY|KEY|NOT|NULL|COMMENT|DESC|ASC)\b/g;
-  return escapeHtml(text).replace(keywords, '<span class="tok-sql">$1</span>');
-}
-
-function highlightJava(text) {
-  return escapeHtml(text).replace(
-    /(\/\*\*[\s\S]*?\*\/|\/\/.*$)|(&quot;(?:\\.|(?!&quot;).)*&quot;)|(@[A-Za-z][A-Za-z0-9_]*)|\b(public|private|protected|class|static|final|void|return|new|import|package|enum|extends|implements|this)\b|\b(Integer|Long|String|Boolean|Double|Float|BigDecimal|LocalDate|LocalDateTime|LocalTime|List|Object)\b|\b(-?\d+(?:\.\d+)?)\b/gm,
-    (match, comment, string, annotation, keyword, type, number) => {
-      if (comment) return `<span class="tok-comment">${comment}</span>`;
-      if (string) return `<span class="tok-string">${string}</span>`;
-      if (annotation) return `<span class="tok-annotation">${annotation}</span>`;
-      if (keyword) return `<span class="tok-keyword">${keyword}</span>`;
-      if (type) return `<span class="tok-type">${type}</span>`;
-      if (number) return `<span class="tok-number">${number}</span>`;
-      return match;
-    },
-  );
-}
-
-function highlightPlain(text) {
-  return escapeHtml(text).replace(/\b(-?\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>');
+function highlightCode(text, language) {
+  if (!window.hljs) return escapeHtml(text);
+  try {
+    return window.hljs.highlight(text, { language, ignoreIllegals: true }).value;
+  } catch (error) {
+    return escapeHtml(text);
+  }
 }
 
 function markSearchHits(root, query) {
@@ -1331,6 +1307,8 @@ function bindCompanion() {
   stage.addEventListener("click", () => {
     state.dailyEncouragementVisible = false;
     companion.classList.remove("has-daily-encouragement");
+    companion.classList.add("has-companion-tip");
+    setCompanionCollapsed(false);
     state.companionTipIndex = (state.companionTipIndex + 1) % COMPANION_TIPS.length;
     bubble.textContent = COMPANION_TIPS[state.companionTipIndex];
     playCompanionMotion();

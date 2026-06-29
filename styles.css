@@ -690,16 +690,25 @@ select:focus {
   max-height: 620px;
   overflow: auto;
   margin: 0;
-  padding: 42px 15px 15px;
-  border: 1px solid #36362e;
+  padding: 44px 16px 16px;
+  border: 1px solid #30363d;
   border-radius: 8px;
   background:
-    linear-gradient(#34342c 0 30px, transparent 30px),
-    #23231d;
-  color: #f7f3eb;
+    linear-gradient(#20262d 0 30px, transparent 30px),
+    #0d1117;
+  color: #e6edf3;
   font-size: 13px;
   line-height: 1.55;
   white-space: pre-wrap;
+}
+
+.tool-output code.hljs {
+  display: block;
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  white-space: inherit;
 }
 
 .output-search {
@@ -721,16 +730,17 @@ select:focus {
 
 .search-hit {
   border-radius: 3px;
-  background: rgba(216, 180, 95, 0.35);
+  background: rgba(255, 212, 59, 0.34);
   color: #fff6d4;
+  box-shadow: 0 0 0 1px rgba(255, 212, 59, 0.2);
 }
 
 .tool-output::before {
-  content: "code";
+  content: attr(data-language);
   position: absolute;
   top: 8px;
   left: 14px;
-  color: #a8a395;
+  color: #8b949e;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0;
@@ -745,58 +755,10 @@ select:focus {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #d97757;
+  background: #ff7b72;
   box-shadow:
-    -13px 0 0 #d8b45f,
-    -26px 0 0 #6f8f68;
-}
-
-.tok-key {
-  color: #d8b45f;
-}
-
-.tok-string {
-  color: #a8c292;
-}
-
-.tok-number {
-  color: #8fb5d7;
-}
-
-.tok-bool {
-  color: #d97757;
-}
-
-.tok-null {
-  color: #a8a395;
-}
-
-.tok-sql {
-  color: #d8b45f;
-  font-weight: 800;
-}
-
-.tok-keyword {
-  color: #c792ea;
-  font-weight: 800;
-}
-
-.tok-type {
-  color: #82aaff;
-}
-
-.tok-annotation {
-  color: #ffcb6b;
-}
-
-.tok-comment {
-  color: #7f8f74;
-  font-style: italic;
-}
-
-.tok-java {
-  color: #c792ea;
-  font-weight: 800;
+    -13px 0 0 #d29922,
+    -26px 0 0 #3fb950;
 }
 
 .code-output {
@@ -1122,6 +1084,12 @@ select:focus {
 }
 
 .tools-mode .site-companion.has-daily-encouragement .companion-bubble {
+  display: block;
+  max-width: 132px;
+  font-size: 12px;
+}
+
+.tools-mode .site-companion.has-companion-tip .companion-bubble {
   display: block;
   max-width: 132px;
   font-size: 12px;
