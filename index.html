@@ -102,30 +102,8 @@
               </div>
             </article>
 
-            <article class="tool-card split-tool" id="tool-java-format" data-tool-panel="java-format">
-              <header>
-                <div class="tool-heading">
-                  <div class="tool-title"><span class="tool-index">03</span><h3>Java 代码格式化</h3></div>
-                  <div class="title-actions">
-                    <button class="primary-button" id="formatJavaBtn" type="button">格式化</button>
-                  </div>
-                </div>
-                <div class="preview-toolbar">
-                  <input class="output-search" type="search" data-search-output="javaFormatOutput" placeholder="在结果中搜索" />
-                  <button class="ghost-button" data-copy-from="javaFormatOutput" type="button">复制</button>
-                </div>
-              </header>
-              <div class="tool-inputs">
-                <textarea id="javaFormatInput" class="tool-textarea" spellcheck="false" placeholder='public class Demo{public static void main(String[] args){System.out.println("hello");}}'></textarea>
-                <p class="tool-message" id="javaFormatMessage"></p>
-              </div>
-              <div class="tool-results">
-                <pre class="tool-output" id="javaFormatOutput"></pre>
-              </div>
-            </article>
-
             <article class="tool-card compact-tool" id="tool-timestamp" data-tool-panel="timestamp">
-              <header><span class="tool-index">04</span><h3>时间戳转换</h3></header>
+              <header><span class="tool-index">03</span><h3>时间戳转换</h3></header>
               <div class="tool-inputs">
                 <div class="inline-grid">
                   <input id="timestampInput" type="text" placeholder="秒/毫秒时间戳，或 2026-06-28 15:30:00" />
@@ -141,7 +119,7 @@
             <article class="tool-card split-tool" id="tool-url" data-tool-panel="url">
               <header>
                 <div class="tool-heading">
-                  <div class="tool-title"><span class="tool-index">05</span><h3>URL 编解码</h3></div>
+                  <div class="tool-title"><span class="tool-index">04</span><h3>URL 编解码</h3></div>
                   <div class="title-actions">
                     <button class="primary-button" id="urlEncodeBtn" type="button">编码</button>
                     <button class="ghost-button" id="urlDecodeBtn" type="button">解码</button>
@@ -164,7 +142,7 @@
             <article class="tool-card split-tool" id="tool-base64" data-tool-panel="base64">
               <header>
                 <div class="tool-heading">
-                  <div class="tool-title"><span class="tool-index">06</span><h3>Base64 编解码</h3></div>
+                  <div class="tool-title"><span class="tool-index">05</span><h3>Base64 编解码</h3></div>
                   <div class="title-actions">
                     <button class="primary-button" id="base64EncodeBtn" type="button">编码</button>
                     <button class="ghost-button" id="base64DecodeBtn" type="button">解码</button>
@@ -187,7 +165,7 @@
             <article class="tool-card split-tool" id="tool-sql-java" data-tool-panel="sql-java">
               <header>
                 <div class="tool-heading">
-                  <div class="tool-title"><span class="tool-index">07</span><h3>SQL 转 Java 实体</h3></div>
+                  <div class="tool-title"><span class="tool-index">06</span><h3>SQL 转 Java 实体</h3></div>
                   <div class="title-actions">
                     <button class="primary-button" id="sqlJavaBtn" type="button">生成</button>
                   </div>
@@ -218,7 +196,7 @@
             <article class="tool-card split-tool" id="tool-json-java" data-tool-panel="json-java">
               <header>
                 <div class="tool-heading">
-                  <div class="tool-title"><span class="tool-index">08</span><h3>JSON 转 Java DTO</h3></div>
+                  <div class="tool-title"><span class="tool-index">07</span><h3>JSON 转 Java DTO</h3></div>
                   <div class="title-actions">
                     <button class="primary-button" id="jsonJavaBtn" type="button">生成</button>
                   </div>
@@ -242,7 +220,7 @@
             </article>
 
             <article class="tool-card compact-tool" id="tool-cron" data-tool-panel="cron">
-              <header><span class="tool-index">09</span><h3>Cron 表达式</h3></header>
+              <header><span class="tool-index">08</span><h3>Cron 表达式</h3></header>
               <div class="tool-inputs">
                 <div class="inline-grid">
                   <input id="cronInput" type="text" value="*/5 * * * *" placeholder="5位 cron，例如 */5 * * * *" />
@@ -258,7 +236,7 @@
             <article class="tool-card split-tool" id="tool-jwt" data-tool-panel="jwt">
               <header>
                 <div class="tool-heading">
-                  <div class="tool-title"><span class="tool-index">10</span><h3>JWT 解析</h3></div>
+                  <div class="tool-title"><span class="tool-index">09</span><h3>JWT 解析</h3></div>
                   <div class="title-actions">
                     <button class="primary-button" id="jwtBtn" type="button">解析</button>
                   </div>
@@ -278,8 +256,8 @@
               </div>
             </article>
 
-            <article class="tool-card compact-tool" id="tool-ip" data-tool-panel="ip">
-              <header><span class="tool-index">11</span><h3>IP 地址查询</h3></header>
+              <article class="tool-card compact-tool" id="tool-ip" data-tool-panel="ip">
+              <header><span class="tool-index">10</span><h3>IP 地址查询</h3></header>
               <div class="tool-inputs">
                 <div class="inline-grid ip-query-grid">
                   <div class="tip-field">
@@ -305,7 +283,7 @@
             <article class="tool-card split-tool" id="tool-enum" data-tool-panel="enum">
               <header>
                 <div class="tool-heading">
-                  <div class="tool-title"><span class="tool-index">12</span><h3>枚举生成器</h3></div>
+                  <div class="tool-title"><span class="tool-index">11</span><h3>枚举生成器</h3></div>
                 </div>
               </header>
               <div class="enum-top-row">
@@ -350,6 +328,8 @@
         <button class="companion-toggle" id="companionToggle" type="button" aria-label="收起工具伙伴">收起</button>
       </aside>
     </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
     <script src="./assets/live2d/runtime/live2d.js"></script>

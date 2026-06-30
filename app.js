@@ -13,7 +13,6 @@ const CATEGORIES = {
 const TOOLS = [
   { id: "json", title: "JSON", fullTitle: "JSON 格式化", category: "format", aliases: ["json", "format", "格式化", "json格式化"] },
   { id: "sql", title: "SQL", fullTitle: "SQL 格式化", category: "format", aliases: ["sql", "format", "格式化", "sql格式化"] },
-  { id: "java-format", title: "Java", fullTitle: "Java 代码格式化", category: "format", aliases: ["java", "format", "格式化", "java格式化", "java代码格式化"] },
   { id: "timestamp", title: "时间戳", fullTitle: "时间戳转换", category: "time", aliases: ["time", "timestamp", "日期", "时间"] },
   { id: "url", title: "URL", fullTitle: "URL 编解码", category: "convert", aliases: ["url", "encode", "decode", "编码", "解码", "urlencode", "urldecode"] },
   { id: "base64", title: "Base64", fullTitle: "Base64 编解码", category: "convert", aliases: ["base64", "encode", "decode", "编码", "解码"] },
@@ -210,6 +209,20 @@ function getCategoryTools(category) {
 async function copyText(value) {
   if (!value) return;
   await navigator.clipboard.writeText(value);
+  showToast("复制成功");
+}
+
+let toastTimer = null;
+
+function showToast(message) {
+  const toast = $("#toast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    toast.classList.remove("show");
+  }, 1600);
 }
 
 function renderResults(target, rows) {
@@ -503,304 +516,6 @@ function formatSql(compact = false) {
 
   setCode(output, sql, "sql");
   setMessage("#sqlMessage");
-}
-
-function formatJava() {
-  const input = $("#javaFormatInput").value.trim();
-  const output = $("#javaFormatOutput");
-  if (!input) {
-    setCode(output, "");
-    setMessage("#javaFormatMessage", "请输入 Java 代码");
-    return;
-  }
-
-  try {
-    const formatted = prettifyJava(input);
-    setCode(output, formatted, "java");
-    setMessage("#javaFormatMessage");
-  } catch (error) {
-    setCode(output, "");
-    setMessage("#javaFormatMessage", error.message || "Java 代码格式化失败");
-  }
-}
-
-function prettifyJava(input) {
-  const source = input.replace(/\r\n?/g, "\n").trim();
-  const tokens = tokenizeJava(source);
-  const lines = [];
-  let currentLine = "";
-  let indentLevel = 0;
-  let parenDepth = 0;
-  let previousToken = "";
-  let isLineStart = true;
-
-  function pushLine(force = false) {
-    const line = currentLine.replace(/[ \t]+$/g, "");
-    if (force || line) lines.push(line);
-    currentLine = "";
-    isLineStart = true;
-  }
-
-  function write(text) {
-    if (!text) return;
-    if (isLineStart) {
-      currentLine = `${"  ".repeat(Math.max(indentLevel, 0))}${text}`;
-      isLineStart = false;
-      return;
-    }
-    currentLine += text;
-  }
-
-  function ensureSpace() {
-    if (isLineStart || /[\s(]$/.test(currentLine)) return;
-    currentLine += " ";
-  }
-
-  function shouldBreakBeforeToken(token) {
-    if (isLineStart) return false;
-    if (/^(package|import)$/.test(token)) return true;
-    if (/^(public|private|protected)$/.test(token) && previousToken === ";") return true;
-    if (token === "@") return true;
-    return false;
-  }
-
-  tokens.forEach((token, index) => {
-    const nextToken = tokens[index + 1] || "";
-
-    if (token === "(") {
-      if (/^(if|for|while|switch|catch|synchronized)$/.test(previousToken)) ensureSpace();
-      write("(");
-      parenDepth += 1;
-      previousToken = token;
-      return;
-    }
-
-    if (token === ")") {
-      write(")");
-      parenDepth = Math.max(parenDepth - 1, 0);
-      previousToken = token;
-      return;
-    }
-
-    if (token === "{") {
-      if (!isLineStart && !/[\s({]$/.test(currentLine)) ensureSpace();
-      write("{");
-      pushLine();
-      indentLevel += 1;
-      previousToken = token;
-      return;
-    }
-
-    if (token === "}") {
-      if (!isLineStart) pushLine();
-      indentLevel = Math.max(indentLevel - 1, 0);
-      write("}");
-      if (nextToken === "else" || nextToken === "catch" || nextToken === "finally") {
-        write(" ");
-      } else if (nextToken !== ";") {
-        pushLine();
-      }
-      previousToken = token;
-      return;
-    }
-
-    if (token === ";") {
-      write(";");
-      if (parenDepth === 0) {
-        pushLine();
-      } else {
-        write(" ");
-      }
-      previousToken = token;
-      return;
-    }
-
-    if (token === ",") {
-      write(", ");
-      previousToken = token;
-      return;
-    }
-
-    if (token === "[" || token === "]") {
-      write(token);
-      previousToken = token;
-      return;
-    }
-
-    if (token === ".") {
-      write(".");
-      previousToken = token;
-      return;
-    }
-
-    if (token === "@") {
-      if (!isLineStart) pushLine();
-      write("@");
-      previousToken = token;
-      return;
-    }
-
-    if (token === "->" || token === "::") {
-      ensureSpace();
-      write(token);
-      write(" ");
-      previousToken = token;
-      return;
-    }
-
-    if (token === "?" || token === ":") {
-      ensureSpace();
-      write(token);
-      write(" ");
-      previousToken = token;
-      return;
-    }
-
-    if (token === "++" || token === "--") {
-      write(token);
-      previousToken = token;
-      return;
-    }
-
-    if (isJavaOperator(token)) {
-      ensureSpace();
-      write(token);
-      write(" ");
-      previousToken = token;
-      return;
-    }
-
-    if (token.startsWith("//")) {
-      if (!isLineStart) ensureSpace();
-      write(token);
-      pushLine();
-      previousToken = token;
-      return;
-    }
-
-    if (token.startsWith("/*")) {
-      if (!isLineStart) pushLine();
-      token.split("\n").forEach((line, lineIndex, arr) => {
-        write(line.trimEnd());
-        if (lineIndex < arr.length - 1) pushLine(true);
-      });
-      pushLine();
-      previousToken = token;
-      return;
-    }
-
-    if (shouldBreakBeforeToken(token)) pushLine();
-
-    const needsSpaceBefore =
-      !isLineStart &&
-      !/[\s(.[<]$/.test(currentLine) &&
-      previousToken !== "@" &&
-      previousToken !== "." &&
-      previousToken !== "[" &&
-      token !== ")" &&
-      token !== "," &&
-      token !== ";" &&
-      token !== "." &&
-      token !== "]";
-
-    if (needsSpaceBefore) write(" ");
-    write(token);
-
-    if (/^(else|catch|finally)$/.test(token)) write(" ");
-    previousToken = token;
-  });
-
-  if (!isLineStart || currentLine) pushLine();
-  return lines.join("\n").replace(/\n{3,}/g, "\n\n");
-}
-
-function tokenizeJava(source) {
-  const tokens = [];
-  let index = 0;
-
-  while (index < source.length) {
-    const char = source[index];
-    const next = source[index + 1];
-
-    if (/\s/.test(char)) {
-      index += 1;
-      continue;
-    }
-
-    if (char === "/" && next === "/") {
-      let end = index + 2;
-      while (end < source.length && source[end] !== "\n") end += 1;
-      tokens.push(source.slice(index, end));
-      index = end;
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      let end = index + 2;
-      while (end < source.length - 1 && !(source[end] === "*" && source[end + 1] === "/")) end += 1;
-      end = Math.min(end + 2, source.length);
-      tokens.push(source.slice(index, end));
-      index = end;
-      continue;
-    }
-
-    if (char === '"' || char === "'") {
-      const quote = char;
-      let end = index + 1;
-      let escaped = false;
-      while (end < source.length) {
-        const current = source[end];
-        if (escaped) {
-          escaped = false;
-        } else if (current === "\\") {
-          escaped = true;
-        } else if (current === quote) {
-          end += 1;
-          break;
-        }
-        end += 1;
-      }
-      tokens.push(source.slice(index, end));
-      index = end;
-      continue;
-    }
-
-    const tripleOperator = source.slice(index, index + 3);
-    const doubleOperator = source.slice(index, index + 2);
-    if (["===", "!==", ">>>"].includes(tripleOperator)) {
-      tokens.push(tripleOperator);
-      index += 3;
-      continue;
-    }
-    if (["->", "::", "&&", "||", "==", "!=", "<=", ">=", "++", "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<", ">>"].includes(doubleOperator)) {
-      tokens.push(doubleOperator);
-      index += 2;
-      continue;
-    }
-
-    if ("{}();,.:?[]@".includes(char)) {
-      tokens.push(char);
-      index += 1;
-      continue;
-    }
-
-    if ("+-*/%!=<>|&^~".includes(char)) {
-      tokens.push(char);
-      index += 1;
-      continue;
-    }
-
-    let end = index + 1;
-    while (end < source.length && /[\w$]/.test(source[end])) end += 1;
-    tokens.push(source.slice(index, end));
-    index = end;
-  }
-
-  return tokens.filter(Boolean);
-}
-
-function isJavaOperator(token) {
-  return ["=", "+", "-", "*", "/", "%", "!", "==", "!=", ">", "<", ">=", "<=", "&&", "||", "&", "|", "^", "~", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<", ">>"].includes(token);
 }
 
 function parseDateInput(value) {
@@ -1431,7 +1146,6 @@ function bindEvents() {
   $("#minifyJsonBtn").addEventListener("click", () => formatJson(true));
   $("#formatSqlBtn").addEventListener("click", () => formatSql(false));
   $("#compactSqlBtn").addEventListener("click", () => formatSql(true));
-  $("#formatJavaBtn").addEventListener("click", formatJava);
   $("#convertTimeBtn").addEventListener("click", convertTime);
   $("#useNowBtn").addEventListener("click", () => {
     $("#timestampInput").value = Date.now();
@@ -1781,20 +1495,26 @@ function playCompanionMotion() {
 }
 
 function init() {
-  state.settings = loadSettings();
-  applyCodeTheme();
+  try {
+    state.settings = loadSettings();
+    applyCodeTheme();
 
-  renderCategoryNav();
-  bindEvents();
-  renderToolTabs(getEnabledCategories()[0]);
-  convertTime();
-  calcCron();
+    renderCategoryNav();
+    bindEvents();
+    renderToolTabs(getEnabledCategories()[0]);
+    convertTime();
+    calcCron();
 
-  if (!openToolFromHash()) {
-    showHome();
+    if (!openToolFromHash()) {
+      showHome();
+    }
+    document.body.classList.add("app-ready");
+  } catch (error) {
+    console.error("init failed", error);
+    showToast(error.message || "页面初始化失败");
+  } finally {
+    document.body.classList.remove("app-loading");
   }
-  document.body.classList.remove("app-loading");
-  document.body.classList.add("app-ready");
 }
 
 function updateVisitCounter() {
